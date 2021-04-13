@@ -23,13 +23,13 @@ class BertBiEncoder(nn.Module):
         super().__init__()
         self.mention_bert = mention_bert
         self.candidate_bert = candidate_bert
-        
+
     def forward(self, input_ids, attention_mask, is_mention=True, shard_bsz=None):
         if is_mention:
             model = self.mention_bert
         else:
             model = self.candidate_bert
-            
+
         if shard_bsz is None:
             bertrep, _ = model(input_ids, attention_mask=attention_mask)
             bertrep = bertrep[:, 0, :]
@@ -143,7 +143,7 @@ class BertCandidateGenerator(object):
         preds = torch.argmax(scores, dim=1).tolist()
         result = sum([int(i == p) for i, p in enumerate(preds)])
         return result / scores.size(0)
-        
+
     def train(self,
               mention_dataset,
               candidate_dataset,
@@ -164,10 +164,10 @@ class BertCandidateGenerator(object):
               fp16_opt_level=None,
               parallel=False
              ):
-        
-        
+
+
         if inbatch:
-            
+
             optimizer = optim.Adam(self.model.parameters(), lr=lr)
             scheduler = get_scheduler(
                 batch_size, grad_acc_step, epochs, warmup_propotion, optimizer, traindata_size)
@@ -201,17 +201,17 @@ class BertCandidateGenerator(object):
                                                     for token in candidate_input_ids], padding_value=0).t().to(self.device)
                     candidate_mask = candidate_inputs > 0
                     candidate_reps = self.model(candidate_inputs, candidate_mask, is_mention=False)
-                    
+
                     scores = mention_reps.mm(candidate_reps.t())
                     accuracy = self.calculate_inbatch_accuracy(scores)
-                    
+
                     target = torch.LongTensor(torch.arange(scores.size(1))).to(self.device)
                     loss = F.cross_entropy(scores, target, reduction="mean")
 
                     if self.logger:
                         self.logger.debug("Accurac: %s", accuracy)
                         self.logger.debug("Train loss: %s", loss.item())
-                    
+
 
                     if fp16:
                         with amp.scale_loss(loss, optimizer) as scaled_loss:
@@ -247,5 +247,5 @@ class BertCandidateGenerator(object):
 
                     bar.update(len(input_ids))
                     bar.set_description(f"Loss: {loss.item()}, Accuracy: {accuracy}")
-                
-        
+
+

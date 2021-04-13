@@ -57,4 +57,3 @@ if __name__ == "__main__":
     print(candidates)
 
     searcher.save_index("/home/is/ujiie/wiki_en/models/base_bert_index")
-
