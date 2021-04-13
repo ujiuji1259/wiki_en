@@ -46,6 +46,12 @@ class BertCandidateGenerator(object):
         self.use_mlflow = use_mlflow
         self.logger = logger
 
+    def save_index(self, save_dir):
+        self.searcher.save_index(save_dir)
+
+    def load_index(self, save_dir):
+        self.searcher.load_index(save_dir)
+
     def build_searcher(self,
                        candidate_dataset,
                        max_title_len=50,
