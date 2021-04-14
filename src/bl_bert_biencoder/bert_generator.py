@@ -37,10 +37,10 @@ class BertBiEncoder(nn.Module):
 
 
 class BertCandidateGenerator(object):
-    def __init__(self, biencoder, device="cpu", model_path=None, use_mlflow=False, logger=None):
+    def __init__(self, biencoder, device="cpu", model_path=None, use_mlflow=False, builder_gpu=False, logger=None):
         self.model = biencoder.to(device)
         self.device = device
-        self.searcher = NearestNeighborSearch(768)
+        self.searcher = NearestNeighborSearch(768, use_gpu=builder_gpu)
 
         self.model_path = model_path
         self.use_mlflow = use_mlflow
@@ -60,7 +60,7 @@ class BertCandidateGenerator(object):
         batch_size = 128
 
         with torch.no_grad():
-            for start in range(0, len(page_ids), batch_size):
+            for start in tqdm(range(0, len(page_ids), batch_size)):
                 end = min(start+batch_size, len(page_ids))
                 pages = page_ids[start:end]
                 input_ids = candidate_dataset.get_pages(
