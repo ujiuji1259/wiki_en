@@ -2,6 +2,7 @@ import json
 import csv
 import pickle
 from collections import defaultdict
+from pathlib import Path
 
 from transformers import get_linear_schedule_with_warmup
 import torch
@@ -73,7 +74,7 @@ def load_annotation(path):
             line = json.loads(line)
             annotation.append(line)
     return annotation
-            
+
 def load_plain(path):
     plain_data = {}
     for fn in path.glob("*.txt"):
@@ -93,7 +94,7 @@ def extract_context(annotation, plain_data, id2title):
         mention = ann['text_offset']['text']
         start_line, start_off = ann['text_offset']['start']['line_id'], ann['text_offset']['start']['offset']
         end_line, end_off = ann['text_offset']['end']['line_id'], ann['text_offset']['end']['offset']
-        
+
         if start_line == end_line:
             doc_mention = doc[start_line][start_off:end_off]
             right_context = doc[start_line][:start_off]
@@ -103,10 +104,16 @@ def extract_context(annotation, plain_data, id2title):
             right_context = doc[start_line][:start_off]
             left_context = doc[end_line][end_off:]
         assert doc_mention == mention
-        dataset.append([left_context, mention, right_context, int(ann["link_page_id"])])
+        dataset.append({
+            "left_context": left_context,
+            "mention": mention,
+            "right_context": right_context,
+            "linkpage_id": int(ann["link_page_id"])
+        })
     return dataset
 
 def load_dataset(base_dir, category):
+    base_dir = Path(base_dir)
     id2title = load_title_id("/data1/ujiie/wiki_resource/title_id.csv")
     annotation = load_annotation(base_dir / "link_annotation" / f"{category}.json")
     plain_data = load_plain(base_dir / "plain" / category)
