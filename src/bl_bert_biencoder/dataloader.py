@@ -12,48 +12,48 @@ class CandidateDataset(object):
         self.data = self._read(input_file, preprocessed)
         self.CLS = self.tokenizer.convert_tokens_to_ids(['[CLS]'])[0]
         self.SEP = self.tokenizer.convert_tokens_to_ids(['[SEP]'])[0]
-        
+
     def save_preprocessed_data(self, fn):
         with open(fn, 'wb') as f:
             pickle.dump(self.data, f)
-        
+
     def _preprocess(self, title, description):
         title = self.tokenizer.tokenize(title)
         description = self.tokenizer.tokenize(description)
-        
+
         if len(title) > self.max_title_len:
             self.max_title_len = len(title)
         if len(description) > self.max_desc_len:
             self.max_desc_len = len(description)
-        
+
         title = self.tokenizer.convert_tokens_to_ids(title)
         description = self.tokenizer.convert_tokens_to_ids(description)
         return title, description
-        
+
     def _read(self, fn, preprocessed=False):
         data = {}
         if preprocessed:
             with open(fn, 'rb') as f:
                 data = pickle.load(f)
             return data
-        
+
         with open(fn, 'r') as f:
             for line in f:
                 line = line.rstrip()
                 if not line:
                     continue
-                    
+
                 line = json.loads(line)
                 title, desc = self._preprocess(line['title'], line['description'])
                 data[int(line['id'])] = {
-                    "title": line['title'], 
-                    "description": line['description'], 
-                    'title_ids': title, 
+                    "title": line['title'],
+                    "description": line['description'],
+                    'title_ids': title,
                     'description_ids': desc
                 }
-                
+
         return data
-    
+
     def get_pages(self, page_ids, max_title_len=50, max_desc_len=100):
         input_seq =  [self.data[int(page_id)] for page_id in page_ids]
         results = []
@@ -114,20 +114,20 @@ class MentionDataset(Dataset):
             left_ctxt = self.tokenizer.tokenize(line['left_context'])
             mention_tokens = self.tokenizer.tokenize(line['mention'])
             right_ctxt = self.tokenizer.tokenize(line['right_context'])
-        
+
         input_seq = ['[CLS]'] + left_ctxt[-self.max_ctxt_len:] + ['[M]'] + mention_tokens + ['[/M]'] + right_ctxt[:self.max_ctxt_len] + ['[SEP]']
         input_seq = self.tokenizer.convert_tokens_to_ids(input_seq)
         #[input_seq.append(0) for i in range(max(0,200-len(input_seq)))]
         input_label = line['linkpage_id']
         return input_seq, input_label
-        
+
 
 class MentionDataset2(object):
     def __init__(self, input_file, tokenizer, preprocessed):
         self.input_file = input_file
         self.tokenizer = tokenizer
         self.preprocessed = preprocessed
-    
+
     def _preprocess(self, line, max_ctxt_len=32):
         if self.preprocessed:
             left_ctxt = line['left_ctxt_tokens']
@@ -137,13 +137,13 @@ class MentionDataset2(object):
             left_ctxt = self.tokenizer.tokenize(line['left_context'])
             mention_tokens = self.tokenizer.tokenize(line['mention'])
             right_ctxt = self.tokenizer.tokenize(line['right_context'])
-        
+
         input_seq = ['[CLS]'] + left_ctxt[-max_ctxt_len:] + ['[M]'] + mention_tokens + ['[/M]'] + right_ctxt[:max_ctxt_len] + ['[SEP]']
         input_seq = self.tokenizer.convert_tokens_to_ids(input_seq)
         #[input_seq.append(0) for i in range(max(0,200-len(input_seq)))]
         input_label = line['linkpage_id']
         return input_seq, input_label
-    
+
     def batch(self, batch_size=16, random_bsz=100000, max_ctxt_len=32, return_json=False):
         batch_input, batch_labels = [], []
         if return_json:
@@ -153,7 +153,7 @@ class MentionDataset2(object):
                 if len(batch_input) >= random_bsz:
                     random_idx = [i for i in range(len(batch_input))]
                     random.shuffle(random_idx)
-                    
+
                     for batch_idx in range(0, len(batch_input), batch_size):
                         end_batch_idx = min(batch_idx+batch_size, len(batch_input))
                         inbatch_input = [batch_input[random_idx[i]] for i in range(batch_idx, end_batch_idx)]
@@ -167,12 +167,12 @@ class MentionDataset2(object):
                     batch_input, batch_labels = [], []
                     if return_json:
                         batch_lines = []
-                    
+
                 line = line.rstrip()
                 if not line:
                     continue
                 line = json.loads(line)
-                
+
                 ids, labels = self._preprocess(line)
                 batch_input.append(ids)
                 batch_labels.append(labels)
@@ -180,11 +180,11 @@ class MentionDataset2(object):
                 if return_json:
                     batch_lines.append(line)
 
-                
+
             if len(batch_input) > 0:
                 random_idx = [i for i in range(len(batch_input))]
                 random.shuffle(random_idx)
-                    
+
                 for batch_idx in range(0, len(batch_input), batch_size):
                     end_batch_idx = min(batch_idx+batch_size, len(batch_input))
                     inbatch_input = [batch_input[random_idx[i]] for i in range(batch_idx, end_batch_idx)]
@@ -194,7 +194,7 @@ class MentionDataset2(object):
                         yield inbatch_input, inbatch_labels, inbatch_lines
                     else:
                         yield inbatch_input, inbatch_labels
-                    
+
 
 def my_collate_fn(batch):
     tokens, tags = list(zip(*batch))
