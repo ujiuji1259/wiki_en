@@ -100,12 +100,17 @@ def main():
     if args.parallel:
         model.model = to_parallel(model.model)
 
-
     if args.mlflow:
         mlflow.end_run()
 
-    model.build_searcher(candidate_dataset, max_title_len=args.max_title_len, max_desc_len=args.max_desc_len)
-    model.save_index(args.index_path)
+    if args.load_index:
+        model.load_index(args.index_path)
+    else:
+        model.build_searcher(candidate_dataset, max_title_len=args.max_title_len, max_desc_len=args.max_desc_len)
+        model.save_index(args.index_path)
+
+    recall = model.evaluate(mention_dataset)
+    print(recall)
 
 
 if __name__ == "__main__":

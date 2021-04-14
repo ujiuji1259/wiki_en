@@ -16,6 +16,7 @@ from apex import amp
 from dataloader import my_collate_fn
 from searcher import NearestNeighborSearch
 from utils.util import get_scheduler, to_fp16, save_model, to_parallel
+from utils.metric import calculate_recall
 
 
 class BertBiEncoder(nn.Module):
@@ -52,12 +53,35 @@ class BertCandidateGenerator(object):
     def load_index(self, save_dir):
         self.searcher.load_index(save_dir)
 
+    def evaluate(self, mention_dataset):
+        results = []
+        trues = []
+
+        dataloader = DataLoader(mention_dataset, batch_size=256, collate_fn=my_collate_fn, num_workers=2)
+        with torch.no_grad():
+            for input_ids, labels in tqdm(dataloader):
+                if self.logger:
+                    self.logger.debug("%s step", step)
+                    self.logger.debug("%s data in batch", len(input_ids))
+                    self.logger.debug("%s unique labels in %s labels", len(set(labels)), len(labels))
+
+                inputs = pad_sequence([torch.LongTensor(token)
+                                for token in input_ids], padding_value=0).t().to(self.device)
+                input_mask = inputs > 0
+                mention_reps = self.model(inputs, input_mask, is_mention=True).detach().cpu().numpy()
+
+                preds = self.searcher.search(mention_reps, 100)
+                results.extend(preds)
+                trues.extend(labels)
+        recall = calculate_recall(trues, results)
+        return recall
+
     def build_searcher(self,
                        candidate_dataset,
                        max_title_len=50,
                        max_desc_len=100):
         page_ids = list(candidate_dataset.data.keys())
-        batch_size = 128
+        batch_size = 2048
 
         with torch.no_grad():
             for start in tqdm(range(0, len(page_ids), batch_size)):
