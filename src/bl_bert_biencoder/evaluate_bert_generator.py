@@ -11,9 +11,9 @@ from transformers import AutoTokenizer, AutoModel
 import apex
 from apex import amp
 
-from dataloader import MentionDataset, CandidateDataset
+from dataloader import ShinraDataset, CandidateDataset
 from bert_generator import BertBiEncoder, BertCandidateGenerator
-from utils.util import to_parallel, save_model
+from utils.util import to_parallel, to_fp16, save_model
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -21,13 +21,18 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, help="bert-name used for biencoder")
-    parser.add_argument("--mention_dataset", type=str, help="mention dataset path")
-    parser.add_argument("--candidate_dataset", type=str, help="candidate dataset path")
     parser.add_argument("--model_path", type=str, help="model save path")
+    parser.add_argument("--index_path", type=str, help="model save path")
+    parser.add_argument("--load_index", type=str, help="model save path")
+    parser.add_argument("--mention_dataset", type=str, help="mention dataset path")
+    parser.add_argument("--category", type=str, help="mention dataset path")
+    parser.add_argument("--candidate_dataset", type=str, help="candidate dataset path")
     parser.add_argument("--candidate_preprocessed", action="store_true", help="whether candidate_dataset is preprocessed")
+    parser.add_argument("--builder_gpu", action="store_true", help="bert-name used for biencoder")
     parser.add_argument("--max_ctxt_len", type=int, help="maximum context length")
     parser.add_argument("--max_title_len", type=int, help="maximum title length")
     parser.add_argument("--max_desc_len", type=int, help="maximum description length")
+    parser.add_argument("--mlflow", action="store_true", help="whether using inbatch negative")
     parser.add_argument("--parallel", action="store_true", help="whether using inbatch negative")
     parser.add_argument("--fp16", action="store_true", help="whether using inbatch negative")
     parser.add_argument('--fp16_opt_level', type=str, default="O1")
@@ -71,6 +76,8 @@ def main():
 
     candidate_dataset = CandidateDataset(args.candidate_dataset, mention_tokenizer, preprocessed=args.candidate_preprocessed)
 
+    mention_dataset = ShinraDataset(args.mention_dataset, args.category, mention_tokenizer, max_ctxt_len=args.max_ctxt_len)
+
     mention_bert = AutoModel.from_pretrained(args.model_name)
     mention_bert.resize_token_embeddings(len(mention_tokenizer))
     candidate_bert = AutoModel.from_pretrained(args.model_name)
@@ -78,10 +85,28 @@ def main():
     biencoder = BertBiEncoder(mention_bert, candidate_bert)
     biencoder.load_state_dict(torch.load(args.model_path))
 
-    model = BertCandidateGenerator(biencoder, device, model_path=args.model_path, use_mlflow=args.mlflow, logger=logger)
+
+    model = BertCandidateGenerator(
+        biencoder,
+        device,
+        model_path=args.model_path,
+        use_mlflow=args.mlflow,
+        builder_gpu=args.builder_gpu,
+        logger=logger)
+
+    if args.fp16:
+        model.model = to_fp16(model.model, fp16_opt_level=args.fp16_opt_level)
+
+    if args.parallel:
+        model.model = to_parallel(model.model)
+
 
     if args.mlflow:
         mlflow.end_run()
+
+    model.build_searcher(candidate_dataset, max_title_len=args.max_title_len, max_desc_len=args.max_desc_len)
+    model.save_index(args.index_path)
+
 
 if __name__ == "__main__":
     """
