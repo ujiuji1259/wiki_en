@@ -1,9 +1,43 @@
+import sys
+sys.path.append("../")
 import json
 import pickle
 import random
 import fasteners
 
 from torch.utils.data import Dataset
+from utils.util import load_dataset
+
+
+class ShinraDataset(Dataset):
+    def __init__(self, path, category, tokenizer, max_ctxt_len, preprocessed=False):
+        self.path = path
+        self.category = category
+        self.max_ctxt_len = max_ctxt_len
+        self.data = load_dataset(self.path, self.category)
+        self.preprocessed = preprocessed
+
+    def _preprocess(self, line):
+        if self.preprocessed:
+            left_ctxt = line['left_ctxt_tokens']
+            mention_tokens = line['mention_tokens']
+            right_ctxt = line['right_ctxt_tokens']
+        else:
+            left_ctxt = self.tokenizer.tokenize(line['left_context'])
+            mention_tokens = self.tokenizer.tokenize(line['mention'])
+            right_ctxt = self.tokenizer.tokenize(line['right_context'])
+
+        input_seq = ['[CLS]'] + left_ctxt[-self.max_ctxt_len:] + ['[M]'] + mention_tokens + ['[/M]'] + right_ctxt[:self.max_ctxt_len] + ['[SEP]']
+        input_seq = self.tokenizer.convert_tokens_to_ids(input_seq)
+        #[input_seq.append(0) for i in range(max(0,200-len(input_seq)))]
+        input_label = line['linkpage_id']
+        return input_seq, input_label
+
+    def __getitem__(self, item):
+        input_seq, input_label = self._preprocess(self.data[item])
+        return input_seq, input_label
+
+
 
 
 class CandidateDataset(object):
