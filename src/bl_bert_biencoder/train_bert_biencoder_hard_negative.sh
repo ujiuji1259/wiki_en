@@ -7,7 +7,7 @@ python train_bert_biencoder.py \
     --mention_dataset /data1/ujiie/wiki_resource/training_data_preprocessed_for_bert-base-japanese-NN1.jsonl \
     --mention_index /data1/ujiie/wiki_resource/training_data_preprocessed_for_bert-base-japanese-NN1_index.npy \
     --candidate_dataset /data1/ujiie/wiki_resource/pages_preprocessed_for_bert-base-japanese.pkl \
-    --model_path bert_biencoder_hard_negative_1.model \
+    --model_path /home/is/ujiie/wiki_en/models/bert_biencoder_hard_negative_1.model \
     --candidate_preprocessed \
     --mention_preprocessed \
     --inbatch \

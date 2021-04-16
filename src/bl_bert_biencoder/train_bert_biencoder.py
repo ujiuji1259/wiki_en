@@ -95,31 +95,36 @@ def main():
     candidate_bert = AutoModel.from_pretrained(args.model_name)
 
     biencoder = BertBiEncoder(mention_bert, candidate_bert)
-    #biencoder.load_state_dict(torch.load(args.model_path))
+
+    if args.load_model_path:
+        biencoder.load_state_dict(torch.load(args.load_model_path))
 
     model = BertCandidateGenerator(biencoder, device, model_path=args.model_path, use_mlflow=args.mlflow, logger=logger)
 
-    model.train(
-        mention_dataset,
-        candidate_dataset,
-        inbatch=args.inbatch,
-        lr=args.lr,
-        batch_size=args.bsz,
-        random_bsz=args.random_bsz,
-        max_ctxt_len=args.max_ctxt_len,
-        max_title_len=args.max_title_len,
-        max_desc_len=args.max_desc_len,
-        traindata_size=args.traindata_size,
-        model_save_interval=args.model_save_interval,
-        grad_acc_step=args.gradient_accumulation_steps,
-        max_grad_norm=args.max_grad_norm,
-        epochs=args.epochs,
-        warmup_propotion=args.warmup_propotion,
-        fp16=args.fp16,
-        fp16_opt_level=args.fp16_opt_level,
-        parallel=args.parallel,
-        hard_negative=args.hard_negative
-    )
+    try:
+        model.train(
+            mention_dataset,
+            candidate_dataset,
+            inbatch=args.inbatch,
+            lr=args.lr,
+            batch_size=args.bsz,
+            random_bsz=args.random_bsz,
+            max_ctxt_len=args.max_ctxt_len,
+            max_title_len=args.max_title_len,
+            max_desc_len=args.max_desc_len,
+            traindata_size=args.traindata_size,
+            model_save_interval=args.model_save_interval,
+            grad_acc_step=args.gradient_accumulation_steps,
+            max_grad_norm=args.max_grad_norm,
+            epochs=args.epochs,
+            warmup_propotion=args.warmup_propotion,
+            fp16=args.fp16,
+            fp16_opt_level=args.fp16_opt_level,
+            parallel=args.parallel,
+            hard_negative=args.hard_negative
+        )
+    except KeyboardInterrupt:
+        pass
 
     save_model(model.model, args.model_path)
     #torch.save(model.model.state_dict(), args.model_path)
