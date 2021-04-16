@@ -22,6 +22,8 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, help="bert-name used for biencoder")
+    parser.add_argument("--load_model_path", type=str, help="bert-name used for biencoder")
+    parser.add_argument("--hard_negative", action="store_true", help="bert-name used for biencoder")
     parser.add_argument("--mention_dataset", type=str, help="mention dataset path")
     parser.add_argument("--mention_index", type=str, help="mention dataset path")
     parser.add_argument("--candidate_dataset", type=str, help="candidate dataset path")
@@ -84,7 +86,7 @@ def main():
     mention_tokenizer.add_special_tokens({"additional_special_tokens": ["[M]", "[/M]"]})
 
     index = np.load(args.mention_index)
-    mention_dataset = MentionDataset(args.mention_dataset, index, mention_tokenizer, preprocessed=args.mention_preprocessed)
+    mention_dataset = MentionDataset(args.mention_dataset, index, mention_tokenizer, preprocessed=args.mention_preprocessed, return_json=True)
     #mention_dataset = MentionDataset2(args.mention_dataset, mention_tokenizer, preprocessed=args.mention_preprocessed)
     candidate_dataset = CandidateDataset(args.candidate_dataset, mention_tokenizer, preprocessed=args.candidate_preprocessed)
 
@@ -94,12 +96,12 @@ def main():
 
     biencoder = BertBiEncoder(mention_bert, candidate_bert)
     #biencoder.load_state_dict(torch.load(args.model_path))
-    
+
     model = BertCandidateGenerator(biencoder, device, model_path=args.model_path, use_mlflow=args.mlflow, logger=logger)
 
     model.train(
-        mention_dataset, 
-        candidate_dataset, 
+        mention_dataset,
+        candidate_dataset,
         inbatch=args.inbatch,
         lr=args.lr,
         batch_size=args.bsz,
@@ -115,7 +117,8 @@ def main():
         warmup_propotion=args.warmup_propotion,
         fp16=args.fp16,
         fp16_opt_level=args.fp16_opt_level,
-        parallel=args.parallel
+        parallel=args.parallel,
+        hard_negative=args.hard_negative
     )
 
     save_model(model.model, args.model_path)

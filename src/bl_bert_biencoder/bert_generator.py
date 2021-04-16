@@ -198,7 +198,8 @@ class BertCandidateGenerator(object):
               warmup_propotion=0.1,
               fp16=False,
               fp16_opt_level=None,
-              parallel=False
+              parallel=False,
+              hard_negative=False,
              ):
 
 
@@ -217,10 +218,10 @@ class BertCandidateGenerator(object):
 
             for e in range(epochs):
                 #mention_batch = mention_dataset.batch(batch_size=batch_size, random_bsz=random_bsz, max_ctxt_len=max_ctxt_len)
-                dataloader = DataLoader(mention_dataset, batch_size=batch_size, shuffle=True, collate_fn=my_collate_fn, num_workers=2)
+                dataloader = DataLoader(mention_dataset, batch_size=batch_size, shuffle=True, collate_fn=my_collate_fn_json, num_workers=2)
                 bar = tqdm(total=traindata_size)
                 #for step, (input_ids, labels) in enumerate(mention_batch):
-                for step, (input_ids, labels) in enumerate(dataloader):
+                for step, (input_ids, labels, lines) in enumerate(dataloader):
                     if self.logger:
                         self.logger.debug("%s step", step)
                         self.logger.debug("%s data in batch", len(input_ids))
@@ -232,7 +233,12 @@ class BertCandidateGenerator(object):
 
                     mention_reps = self.model(inputs, input_mask, is_mention=True)
 
-                    candidate_input_ids = candidate_dataset.get_pages(labels, max_title_len=max_title_len, max_desc_len=max_desc_len)
+                    pages = list(labels[:])
+                    if hard_negative:
+                        hard_negative_pages = [str(i) for label, line in zip(labels, lines) for i in line['nearest_neighbors'] if str(i) != label]
+                        pages.extend(hard_negative_pages)
+
+                    candidate_input_ids = candidate_dataset.get_pages(pages, max_title_len=max_title_len, max_desc_len=max_desc_len)
                     candidate_inputs = pad_sequence([torch.LongTensor(token)
                                                     for token in candidate_input_ids], padding_value=0).t().to(self.device)
                     candidate_mask = candidate_inputs > 0
@@ -241,7 +247,7 @@ class BertCandidateGenerator(object):
                     scores = mention_reps.mm(candidate_reps.t())
                     accuracy = self.calculate_inbatch_accuracy(scores)
 
-                    target = torch.LongTensor(torch.arange(scores.size(1))).to(self.device)
+                    target = torch.LongTensor(torch.arange(scores.size(0))).to(self.device)
                     loss = F.cross_entropy(scores, target, reduction="mean")
 
                     if self.logger:
