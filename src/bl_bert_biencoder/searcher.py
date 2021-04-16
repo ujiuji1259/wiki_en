@@ -26,7 +26,7 @@ class NearestNeighborSearch(object):
             self.index = faiss.index_cpu_to_gpu(res, 0, self.index)
 
         with open(save_dir / "pages.txt", 'r') as f:
-            self.page_ids = [l for l in f.read().split("\n") if l != ""]
+            self.page_ids = [int(l) for l in f.read().split("\n") if l != ""]
 
     def save_index(self, save_dir):
         save_dir = Path(save_dir)
@@ -35,7 +35,7 @@ class NearestNeighborSearch(object):
         faiss.write_index(self.index, str(save_dir / "index.model"))
 
         with open(save_dir / "pages.txt", 'w') as f:
-            f.write('\n'.join(self.page_ids))
+            f.write('\n'.join([str(l) for l in self.page_ids]))
 
     def add_entries(self, reps, ids):
         self.index.add(reps)

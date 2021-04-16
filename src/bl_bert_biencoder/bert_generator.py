@@ -12,8 +12,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import apex
 from apex import amp
+import numpy as np
 
-from dataloader import my_collate_fn
+from dataloader import my_collate_fn, my_collate_fn_json
 from searcher import NearestNeighborSearch
 from utils.util import get_scheduler, to_fp16, save_model, to_parallel
 from utils.metric import calculate_recall
@@ -81,7 +82,7 @@ class BertCandidateGenerator(object):
                        max_title_len=50,
                        max_desc_len=100):
         page_ids = list(candidate_dataset.data.keys())
-        batch_size = 2048
+        batch_size = 512
 
         with torch.no_grad():
             for start in tqdm(range(0, len(page_ids), batch_size)):
@@ -104,38 +105,43 @@ class BertCandidateGenerator(object):
     def save_traindata_with_negative_samples(self,
           mention_dataset,
           output_file,
+          index_output_file,
           batch_size=32,
-          random_bsz=100000,
           max_ctxt_len=32,
           max_title_len=50,
           max_desc_len=100,
           traindata_size=1000000,
          ):
-        mention_batch = mention_dataset.batch(batch_size=batch_size, random_bsz=random_bsz, max_ctxt_len=max_ctxt_len, return_json=True)
+        dataloader = DataLoader(mention_dataset, batch_size=batch_size, shuffle=False, collate_fn=my_collate_fn_json, num_workers=2)
 
         bar = tqdm(total=traindata_size)
         total = 0
         trues = 0
+        index = [0]
         with open(output_file, 'w') as fout:
             with torch.no_grad():
-                for input_ids, labels, lines in mention_batch:
+                for input_ids, labels, lines in dataloader:
                     inputs = pad_sequence([torch.LongTensor(token)
                                           for token in input_ids], padding_value=0).t().to(self.device)
                     input_mask = inputs > 0
 
                     mention_reps = self.model(inputs, input_mask, is_mention=True).detach().cpu().numpy()
 
-                    candidates_pageids = self.searcher.search(mention_reps, 10).tolist()
+                    candidates_pageids = self.searcher.search(mention_reps, 10)
 
                     for i in range(len(lines)):
                         lines[i]['nearest_neighbors'] = candidates_pageids[i]
-                        fout.write(json.dumps(lines[i]) + '\n')
+                        output = json.dumps(lines[i]) + '\n'
+                        fout.write(output)
+                        index.append(index[-1] + len(output))
 
                         total += 1
                         trues += int(lines[i]['linkpage_id'] in lines[i]['nearest_neighbors'])
 
                     bar.update(len(lines))
                     bar.set_description(f"Recall@10: {trues/total}")
+        index = np.array(index)
+        np.save(index_output_file, index)
 
 
     def train_hard_negative(self,

@@ -13,6 +13,7 @@ class ShinraDataset(Dataset):
     def __init__(self, path, category, tokenizer, max_ctxt_len, preprocessed=False):
         self.path = path
         self.category = category
+        self.tokenizer = tokenizer
         self.max_ctxt_len = max_ctxt_len
         self.data = load_dataset(self.path, self.category)
         self.preprocessed = preprocessed
@@ -37,7 +38,8 @@ class ShinraDataset(Dataset):
         input_seq, input_label = self._preprocess(self.data[item])
         return input_seq, input_label
 
-
+    def __len__(self):
+        return len(self.data)
 
 
 class CandidateDataset(object):
@@ -115,7 +117,7 @@ class CandidateDataset(object):
 
 
 class MentionDataset(Dataset):
-    def __init__(self, fn, index, tokenizer, preprocessed, max_ctxt_len=32):
+    def __init__(self, fn, index, tokenizer, preprocessed, max_ctxt_len=32, return_json=False):
         self.fn = fn
         self.f = open(fn, 'r')
         self.index = index
@@ -123,6 +125,7 @@ class MentionDataset(Dataset):
         self.tokenizer = tokenizer
         self.preprocessed = preprocessed
         self.max_ctxt_len = max_ctxt_len
+        self.return_json = return_json
 
     def __del__(self):
         print('close')
@@ -137,6 +140,9 @@ class MentionDataset(Dataset):
             line = self.f.read(self.index[item+1] - self.index[item])[:-1]
         line = json.loads(line)
         input_seq, input_label = self._preprocess(line)
+        if self.return_json:
+            return input_seq, input_label, line
+        
         return input_seq, input_label
 
     def _preprocess(self, line):
@@ -233,4 +239,8 @@ class MentionDataset2(object):
 def my_collate_fn(batch):
     tokens, tags = list(zip(*batch))
     return tokens, tags
+
+def my_collate_fn_json(batch):
+    tokens, tags, lines = list(zip(*batch))
+    return tokens, tags, lines
 

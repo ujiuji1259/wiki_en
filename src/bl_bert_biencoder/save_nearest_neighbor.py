@@ -11,7 +11,7 @@ from transformers import AutoTokenizer, AutoModel
 import apex
 from apex import amp
 
-from dataloader import ShinraDataset, CandidateDataset
+from dataloader import MentionDataset, CandidateDataset
 from bert_generator import BertBiEncoder, BertCandidateGenerator
 from utils.util import to_parallel, to_fp16, save_model
 
@@ -26,14 +26,19 @@ def parse_args():
     parser.add_argument("--model_path", type=str, help="model save path")
     parser.add_argument("--index_path", type=str, help="model save path")
     parser.add_argument("--load_index", action="store_true", help="model save path")
+    parser.add_argument("--output_path", type=str, help="model save path")
+    parser.add_argument("--index_output_path", type=str, help="model save path")
     parser.add_argument("--mention_dataset", type=str, help="mention dataset path")
-    parser.add_argument("--category", type=str, help="mention dataset path")
+    parser.add_argument("--mention_index", type=str, help="mention dataset path")
+    parser.add_argument("--mention_preprocessed", action="store_true", help="whether candidate_dataset is preprocessed")
     parser.add_argument("--candidate_dataset", type=str, help="candidate dataset path")
     parser.add_argument("--candidate_preprocessed", action="store_true", help="whether candidate_dataset is preprocessed")
     parser.add_argument("--builder_gpu", action="store_true", help="bert-name used for biencoder")
+    parser.add_argument("--traindata_size", type=int, help="maximum context length")
     parser.add_argument("--max_ctxt_len", type=int, help="maximum context length")
     parser.add_argument("--max_title_len", type=int, help="maximum title length")
     parser.add_argument("--max_desc_len", type=int, help="maximum description length")
+    parser.add_argument("--batch_size", type=int, help="maximum context length")
     parser.add_argument("--mlflow", action="store_true", help="whether using inbatch negative")
     parser.add_argument("--parallel", action="store_true", help="whether using inbatch negative")
     parser.add_argument("--fp16", action="store_true", help="whether using inbatch negative")
@@ -78,6 +83,9 @@ def main():
 
     candidate_dataset = CandidateDataset(args.candidate_dataset, mention_tokenizer, preprocessed=args.candidate_preprocessed)
 
+    index = np.load(args.mention_index)
+    mention_dataset = MentionDataset(args.mention_dataset, index, mention_tokenizer, preprocessed=args.mention_preprocessed, return_json=True)
+
 
     mention_bert = AutoModel.from_pretrained(args.model_name)
     mention_bert.resize_token_embeddings(len(mention_tokenizer))
@@ -101,26 +109,23 @@ def main():
     if args.parallel:
         model.model = to_parallel(model.model)
 
-    if args.mlflow:
-        mlflow.end_run()
-
     if args.load_index:
         model.load_index(args.index_path)
     else:
         model.build_searcher(candidate_dataset, max_title_len=args.max_title_len, max_desc_len=args.max_desc_len)
         model.save_index(args.index_path)
 
-    if args.category == "all":
-        for category in all_categories:
-            mention_dataset = ShinraDataset(args.mention_dataset, category, mention_tokenizer, max_ctxt_len=args.max_ctxt_len)
+    model.save_traindata_with_negative_samples(
+        mention_dataset,
+        args.output_path,
+        args.index_output_path,
+        batch_size=args.batch_size,
+        max_ctxt_len=args.max_ctxt_len,
+        max_title_len=args.max_title_len,
+        max_desc_len=args.max_desc_len,
+        traindata_size=args.traindata_size,
+    )
 
-            recall = model.evaluate(mention_dataset)
-            print(category, recall)
-    else:
-        mention_dataset = ShinraDataset(args.mention_dataset, args.category, mention_tokenizer, max_ctxt_len=args.max_ctxt_len)
-
-        recall = model.evaluate(mention_dataset)
-        print(args.category, recall)
 
 
 if __name__ == "__main__":

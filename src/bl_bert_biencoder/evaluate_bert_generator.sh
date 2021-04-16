@@ -2,10 +2,11 @@ python evaluate_bert_generator.py \
     --model_name cl-tohoku/bert-base-japanese \
     --model_path /home/is/ujiie/wiki_en/models/bert_biencoder.model \
     --index_path /home/is/ujiie/wiki_en/models/base_bert_index \
+    --load_index \
     --candidate_dataset /data1/ujiie/wiki_resource/pages_preprocessed_for_bert-base-japanese.pkl \
     --candidate_preprocessed \
     --mention_dataset /data1/ujiie/shinra/EN/linkjp-sample-210402/ \
-    --category Airport \
+    --category all \
     --builder_gpu \
     --max_ctxt_len 32 \
     --max_title_len -1 \
