@@ -14,6 +14,7 @@ python save_nearest_neighbor.py \
     --candidate_preprocessed \
     --builder_gpu \
     --traindata_size 21852179 \
+    --NNs 64 \
     --batch_size 256 \
     --max_ctxt_len 32 \
     --max_title_len -1 \

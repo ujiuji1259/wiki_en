@@ -12,7 +12,7 @@ python train_bert_biencoder.py \
     --mention_preprocessed \
     --inbatch \
     --lr 1e-5 \
-    --bsz 16 \
+    --bsz 64 \
     --random_bsz 1000000 \
     --max_ctxt_len 32 \
     --max_title_len -1 \

@@ -111,6 +111,7 @@ class BertCandidateGenerator(object):
           max_title_len=50,
           max_desc_len=100,
           traindata_size=1000000,
+          NNs=64,
          ):
         dataloader = DataLoader(mention_dataset, batch_size=batch_size, shuffle=False, collate_fn=my_collate_fn_json, num_workers=2)
 
@@ -235,8 +236,11 @@ class BertCandidateGenerator(object):
 
                     pages = list(labels[:])
                     if hard_negative:
-                        hard_negative_pages = [str(i) for label, line in zip(labels, lines) for i in line['nearest_neighbors'] if str(i) != label]
-                        pages.extend(hard_negative_pages)
+                        for label, line in zip(labels, lines):
+                            for i in line["nearest_neighbors"]:
+                                if str(i) == label:
+                                    break
+                                pages.append(str(i))
 
                     candidate_input_ids = candidate_dataset.get_pages(pages, max_title_len=max_title_len, max_desc_len=max_desc_len)
                     candidate_inputs = pad_sequence([torch.LongTensor(token)

@@ -35,6 +35,7 @@ def parse_args():
     parser.add_argument("--candidate_preprocessed", action="store_true", help="whether candidate_dataset is preprocessed")
     parser.add_argument("--builder_gpu", action="store_true", help="bert-name used for biencoder")
     parser.add_argument("--traindata_size", type=int, help="maximum context length")
+    parser.add_argument("--NNs", type=int, help="maximum context length")
     parser.add_argument("--max_ctxt_len", type=int, help="maximum context length")
     parser.add_argument("--max_title_len", type=int, help="maximum title length")
     parser.add_argument("--max_desc_len", type=int, help="maximum description length")
@@ -124,6 +125,7 @@ def main():
         max_title_len=args.max_title_len,
         max_desc_len=args.max_desc_len,
         traindata_size=args.traindata_size,
+        NNs=args.NNs,
     )
 
 
