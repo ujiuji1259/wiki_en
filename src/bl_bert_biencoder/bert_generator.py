@@ -119,6 +119,7 @@ class BertCandidateGenerator(object):
         total = 0
         trues = 0
         index = [0]
+        steps = 0
         with open(output_file, 'w') as fout:
             with torch.no_grad():
                 for input_ids, labels, lines in dataloader:
@@ -128,10 +129,11 @@ class BertCandidateGenerator(object):
 
                     mention_reps = self.model(inputs, input_mask, is_mention=True).detach().cpu().numpy()
 
-                    candidates_pageids = self.searcher.search(mention_reps, 10)
+                    candidates_pageids, sims = self.searcher.search(mention_reps, 100)
 
                     for i in range(len(lines)):
                         lines[i]['nearest_neighbors'] = candidates_pageids[i]
+                        lines[i]['similarity'] = sims[i].tolist()
                         output = json.dumps(lines[i]) + '\n'
                         fout.write(output)
                         index.append(index[-1] + len(output))
@@ -141,6 +143,10 @@ class BertCandidateGenerator(object):
 
                     bar.update(len(lines))
                     bar.set_description(f"Recall@10: {trues/total}")
+
+                    steps += len(lines)
+                    if steps >= traindata_size:
+                        break
         index = np.array(index)
         np.save(index_output_file, index)
 

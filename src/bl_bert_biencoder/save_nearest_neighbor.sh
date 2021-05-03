@@ -5,15 +5,15 @@ python save_nearest_neighbor.py \
     --model_path /home/is/ujiie/wiki_en/models/bert_biencoder.model \
     --index_path /home/is/ujiie/wiki_en/models/base_bert_index \
     --load_index \
-    --output_path /data1/ujiie/wiki_resource/training_data_preprocessed_for_bert-base-japanese-NN1.jsonl \
-    --index_output_path /data1/ujiie/wiki_resource/training_data_preprocessed_for_bert-base-japanese-NN1_index.npy \
+    --output_path /data1/ujiie/wiki_resource/training_data_preprocessed_for_bert-base-japanese-NN100.jsonl \
+    --index_output_path /data1/ujiie/wiki_resource/training_data_preprocessed_for_bert-base-japanese-NN100_index.npy \
     --mention_dataset /data1/ujiie/wiki_resource/training_data_preprocessd_for_bert-base-japanese.jsonl \
     --mention_index /data1/ujiie/wiki_resource/training_data_preprocessd_for_bert-base-japanese_index.npy \
     --mention_preprocessed \
     --candidate_dataset /data1/ujiie/wiki_resource/pages_preprocessed_for_bert-base-japanese.pkl \
     --candidate_preprocessed \
     --builder_gpu \
-    --traindata_size 21852179 \
+    --traindata_size 9000000 \
     --NNs 64 \
     --batch_size 256 \
     --max_ctxt_len 32 \

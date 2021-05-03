@@ -44,7 +44,7 @@ class NearestNeighborSearch(object):
     def search(self, queries, k):
         D, I = self.index.search(queries, k)
         candidates = [[self.page_ids[i] for i in ii] for ii in I]
-        return candidates
+        return candidates, D
 
 if __name__ == "__main__":
     xb = np.random.random((1000, 768)).astype("float32")

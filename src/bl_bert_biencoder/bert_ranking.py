@@ -21,6 +21,7 @@ from utils.metric import calculate_recall
 
 class BertCrossEncoder(nn.Module):
     def __init__(self, bert):
+        super().__init__()
         self.model = bert
         self.linear_layer = nn.Linear(768, 1)
 
@@ -47,10 +48,7 @@ class BertCandidateRanker(object):
     def train(self,
               mention_dataset,
               candidate_dataset,
-              inbatch=True,
               lr=1e-5,
-              batch_size=32,
-              random_bsz=100000,
               max_ctxt_len=32,
               max_title_len=50,
               max_desc_len=100,
@@ -63,13 +61,12 @@ class BertCandidateRanker(object):
               fp16=False,
               fp16_opt_level=None,
               parallel=False,
-              hard_negative=False,
              ):
 
 
         optimizer = optim.Adam(self.model.parameters(), lr=lr)
         scheduler = get_scheduler(
-            batch_size, grad_acc_step, epochs, warmup_propotion, optimizer, traindata_size)
+            1, grad_acc_step, epochs, warmup_propotion, optimizer, traindata_size)
 
         if fp16:
             assert fp16_opt_level is not None
@@ -87,7 +84,7 @@ class BertCandidateRanker(object):
                     self.logger.debug("%s data in batch", len(input_ids))
                     self.logger.debug("%s unique labels in %s labels", len(set(labels)), len(labels))
 
-                pages = labels
+                pages = list(labels)
                 for nn in lines[0]["nearest_neighbors"]:
                     if nn not in pages:
                         pages.append(str(nn))
@@ -96,15 +93,14 @@ class BertCandidateRanker(object):
                 inputs = self.merge_mention_candidate(input_ids[0], candidate_input_ids)
 
                 inputs = pad_sequence([torch.LongTensor(token)
-                                        for token in input], padding_value=0).t().to(self.device)
+                                        for token in inputs], padding_value=0).t().to(self.device)
                 input_mask = inputs > 0
                 scores = self.model(inputs, input_mask)
 
                 target = torch.LongTensor([0]).to(self.device)
-                loss = F.cross_entropy(scores.unsqueeze(0), target, reduction="mean")
+                loss = F.cross_entropy(scores.unsqueeze(0), target.unsqueeze(0), reduction="mean")
 
                 if self.logger:
-                    self.logger.debug("Accurac: %s", accuracy)
                     self.logger.debug("Train loss: %s", loss.item())
 
 
@@ -134,12 +130,11 @@ class BertCandidateRanker(object):
 
                 if self.use_mlflow:
                     mlflow.log_metric("train loss", loss.item(), step=step)
-                    mlflow.log_metric("accuracy", accuracy, step=step)
 
                 if self.model_path is not None and step % model_save_interval == 0:
                     #torch.save(self.model.state_dict(), self.model_path)
                     save_model(self.model, self.model_path)
 
                 bar.update(len(input_ids))
-                bar.set_description(f"Loss: {loss.item()}, Accuracy: {accuracy}")
+                bar.set_description(f"Loss: {loss.item()}")
 
