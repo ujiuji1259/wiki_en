@@ -113,7 +113,7 @@ class BertCandidateGenerator(object):
           traindata_size=1000000,
           NNs=64,
          ):
-        dataloader = DataLoader(mention_dataset, batch_size=batch_size, shuffle=False, collate_fn=my_collate_fn_json, num_workers=2)
+        dataloader = DataLoader(mention_dataset, batch_size=batch_size, shuffle=True, collate_fn=my_collate_fn_json, num_workers=2)
 
         bar = tqdm(total=traindata_size)
         total = 0

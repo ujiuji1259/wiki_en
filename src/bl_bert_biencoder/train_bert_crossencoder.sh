@@ -2,8 +2,8 @@ export CUDA_VISIBLE_DEVICES=1,0
 
 python train_bert_crossencoder.py \
     --model_name cl-tohoku/bert-base-japanese \
-    --mention_dataset /data1/ujiie/wiki_resource/training_data_preprocessed_for_bert-base-japanese-NN1.jsonl \
-    --mention_index /data1/ujiie/wiki_resource/training_data_preprocessed_for_bert-base-japanese-NN1_index.npy \
+    --mention_dataset /data1/ujiie/wiki_resource/training_data_preprocessed_for_bert-base-japanese-NN100.jsonl \
+    --mention_index /data1/ujiie/wiki_resource/training_data_preprocessed_for_bert-base-japanese-NN100_index.npy \
     --candidate_dataset /data1/ujiie/wiki_resource/pages_preprocessed_for_bert-base-japanese.pkl \
     --model_path /home/is/ujiie/wiki_en/models/bert_crossencoder.model \
     --candidate_preprocessed \
@@ -12,7 +12,7 @@ python train_bert_crossencoder.py \
     --max_ctxt_len 32 \
     --max_title_len -1 \
     --max_desc_len 200 \
-    --traindata_size 21852179 \
+    --traindata_size 1000000 \
     --mlflow \
     --model_save_interval 10000 \
     --warmup_propotion 0.1 \

@@ -79,6 +79,9 @@ class BertCandidateRanker(object):
             dataloader = DataLoader(mention_dataset, batch_size=1, shuffle=True, collate_fn=my_collate_fn_json, num_workers=2)
             bar = tqdm(total=traindata_size)
             for step, (input_ids, labels, lines) in enumerate(dataloader):
+                if step > traindata_size:
+                    break
+
                 if self.logger:
                     self.logger.debug("%s step", step)
                     self.logger.debug("%s data in batch", len(input_ids))
@@ -137,4 +140,5 @@ class BertCandidateRanker(object):
 
                 bar.update(len(input_ids))
                 bar.set_description(f"Loss: {loss.item()}")
+
 
